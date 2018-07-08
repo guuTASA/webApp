@@ -30,9 +30,9 @@ def create_pool(loop, **kw): #此处的**kw是一个dict
         password=kw['password'],
         db=kw['db'],
         charset=kw.get('charset', 'utf8'),
-        autocommit=kw.get('autocommit', true),
+        autocommit=kw.get('autocommit', True),
         maxsize=kw.get('maxsize', 10),
-        nimsize=ke.git('minsize', 1),
+        minsize=kw.get('minsize', 1),
         loop=loop
     )
        #此处dict的get(key，默认值)方法，如果对应的key有value，则返回value, 否则返回默认值
@@ -78,6 +78,93 @@ def execute(sql, args): # autocommit=true?
 		except BaseException as e:
 			raise
 		return affected
+
+
+class Field(object):
+
+	def __init__(self, name, colunm_type, primary_key, default):
+	# 表的字段包含名字、类型、是否为表的主键和默认值
+		self.name = name
+		self.colunm_type = colunm_type
+		self.primary_key = primary_key
+		self.default = default
+
+	def __str__(self):
+		return '<%s, %s:%s>' % (self.__class__.__name__, self.colunm_type, self.name)
+		# 返回 表名字 字段类型 和字段名
+
+
+# Field子类 * 5，分别对应五种数据类型
+class StringField(Field):
+
+	def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
+		super().__init__(name, ddl, primary_key, default)
+
+# bool不可以作为primary_key
+class BooleanField(Field):
+	
+	def __init__(self, name=None, default=False):
+		super().__init__(name, 'boolean', False, default)
+
+
+class IntegerField(Field):
+
+	def __init__(self, name=None, primary_key=False, default=0):
+		super().__init__(name, 'int', primary_key, default)
+
+
+class FloatField(Field):
+
+	def __init__(self, name=None, primary_key=False, default=0.0):
+		super().__init__(name, 'float', primary_key, default)
+
+
+class TextField(Field):
+
+	def __init__(self, name=None, deflult=None):
+		super().__init__(name, 'text', False, default)
+
+
+# 元类
+class ModelMetaClass(type):
+	# cls：要__init__的类，bases：继承父类的集合，attrs：类的方法集合
+	def __new__(cls, name, bases, attrs):
+		# 要排除对model类的修改
+		if name == 'Model':
+			return type.__new__(cls, name, bases, attrs)
+		# 获取table名称
+		tableName = attrs.get('__table__', None) or name
+		logging.info('found table: %s (table: %s)' % (name, tableName))
+		# 获取所有的Field和主键名
+		mappings = dict()
+		fields = [] # 保存的是除了主键以外的属性名
+		primaryKey = None
+		for k, v in attrs.items():
+			if isinstance(v,Field):
+				logging.info('found mapping:%s ==> %s' %(k, v))
+				mappings[k] = v
+				if v.primary_key:
+					if primaryKey: # 如果又出现一个主键，抛出错误
+						raise RuntimeError('Duplicate primary key for field :%s' % k)
+					primaryKey = k
+				else:
+					fields.append(k)
+		if not primaryKey:
+			raise RuntimeError('Primary key not found.')
+		for k in mappings.keys():
+			attrs.pop(k)
+			# 这一步没看懂
+		escaped_fields = list(map(lambda f:'`%s`' % f, fields))
+		attrs['__mappings__'] = mappings
+		attrs['__table__'] = tableName
+		attrs['__primary_key__'] = primaryKey
+		attrs['__fields__'] = fields
+		# 增删查改语句
+		attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ','.join(escaped_fields), tableName)
+		attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' %(tableName, ','.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields)+1))
+		attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ','.join(map(lambda f:'`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
+		attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
+		return type.__new__(cls, name, bases, attrs)
 
 
 # ORM映射的基类
@@ -209,94 +296,12 @@ class Model(dict, metaclass=ModelMetaClass):
 
 
 # 定义Field类，负责保存(数据库)表的字段名和字段类型
-class Field(object):
 
-	def __init__(self, name, colunm_type, primary_key, default):
-	# 表的字段包含名字、类型、是否为表的主键和默认值
-		self.name = name
-		self.colunm_type = colunm_type
-		self.primary_key = primary_key
-		self.default = default
-
-	def __str__(self):
-		return '<%s, %s:%s>' % (self.__class__.__name__, self.colunm_type, self.name)
-		# 返回 表名字 字段类型 和字段名
-
-
-# Field子类 * 5，分别对应五种数据类型
-class StringField(Field):
-
-	def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
-		super().__init__(name, ddl, primary_key, default)
-
-# bool不可以作为primary_key
-class BooleanField(Field):
-	
-	def __init__(self, name=None, default=False):
-		super().__init__(name, 'boolean', False, default)
-
-
-class IntegerField(Field):
-
-	def __init__(self, name=None, primary_key=False, default=0):
-		super().__init(name, 'int', primary_key, default)
-
-
-class FloatField(Field):
-
-	def __init__(self, name=None, primary_key=False, default=0.0):
-		super().__init__(name, 'float', primary_key, default)
-
-
-class TextField(Field):
-
-	def __init__(self, name=None, deflult=None):
-		super().__init__(name, 'text', False, default)
-
-# 元类
-class ModuleMetaClass(type):
-	# cls：要__init__的类，bases：继承父类的集合，attrs：类的方法集合
-	def __new__(cls, name, bases, attrs):
-		# 要排除对model类的修改
-		if name = 'Module':
-			return type.__new__(cls, name, bases, attrs)
-		# 获取table名称
-		tableName = attrs.get('__table__', None) or name
-		logging.info('found table: %s (table: %s)' % (name, tableName))
-		# 获取所有的Field和主键名
-		mappings = dict()
-		fields = [] # 保存的是除了主键以外的属性名
-		primaryKey = None
-		for k, v in attrs.items():
-			if isinstance(v,Field):
-				logging.info('found mapping:%s ==> %s' %(k, v))
-				mappings[k] = v
-				if v.primary_key:
-					if primaryKey: # 如果又出现一个主键，抛出错误
-						raise RuntimeError('Duplicate primary key for field :%s' % k)
-					primaryKey = k
-				else:
-					fields.append(k)
-		if not primaryKey:
-			raise RuntimeError('Primary key not found.')
-		for k in mappings.keys():
-			attrs.pop(k)
-			# 这一步没看懂
-		escaped_fields = list(map(lambda f:'`%s`' % f, fields))
-		attrs['__mappings__'] = mappings
-		attrs['__table__'] = tableName
-		attrs['__primary_key__'] = primaryKey
-		attrs['__fields__'] = fields
-		# 增删查改语句
-		attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ','.join(escaped_fields), tableName)
-		attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' %(tableName, ','.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields)+1))
-		attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ','.join(map(lambda f:'`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
-		attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
-		return type.__new__(cls, name, bases, attrs)
 
 		
 if __name__ == "__main__":  # 一个类自带前后都有双下划线的方法，在子类继承该类的时候，这些方法会自动调用，比如__init__
     class User2(Model):  # 虽然User类乍看没有参数传入，但实际上，User类继承Model类，Model类又继承dict类，所以User类的实例可以传入关键字参数
+        print('111')
         id = IntegerField('id', primary_key=True)  # 主键为id， tablename为User，即类名
         name = StringField('name')
         email = StringField('email')
@@ -307,12 +312,13 @@ if __name__ == "__main__":  # 一个类自带前后都有双下划线的方法�
     # 创建实例
     @asyncio.coroutine
     def test():
-        yield from create_pool(loop=loop, host='localhost', port=3306, user='root', password='Limin123?', db='test')
-        #user = User2(id=2, name='Tom', email='slysly759@gmail.com', password='12345')
+        yield from create_pool(loop=loop, host='localhost', port=3306, user='root', password='test', db='test')
+        print('222')
+        user = User2(id=2, name='Tom', email='slysly759@gmail.com', password='12345')
         r = yield from User2.findAll()
         print(r)
-        # yield from user.save()
-        # ield from user.update()
+        yield from user.save()
+        yield from user.update()
         # yield from user.delete()
         # r = yield from User2.find(8)
         # print(r)

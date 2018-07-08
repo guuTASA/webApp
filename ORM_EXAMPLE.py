@@ -382,12 +382,12 @@ if __name__ == "__main__":  # 一个类自带前后都有双下划线的方法�
     # 创建实例
     @asyncio.coroutine
     def test():
-        yield from create_pool(loop=loop, host='localhost', port=3306, user='root', password='Limin123?', db='test')
+        yield from create_pool(loop=loop, host='localhost', port=3306, user='root', password='123456', db='test')
         #user = User2(id=2, name='Tom', email='slysly759@gmail.com', password='12345')
         r = yield from User2.findAll()
         print(r)
         # yield from user.save()
-        # ield from user.update()
+        # yield from user.update()
         # yield from user.delete()
         # r = yield from User2.find(8)
         # print(r)
