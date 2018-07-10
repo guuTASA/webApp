@@ -1,18 +1,17 @@
-import ORM_EXAMPLE
-import aiomysql
-import asyncio
-from model import User, Blog, Comment
+import sys
+import orm,asyncio
+from models import User,Blog,Comment
 
-@asyncio.coroutine
-def test():
-	
-	pool = yield from aiomysql.create_pool(loop=loop, host='localhost', port=3306, user='guutasa', password='123456', db='test')
-	
-	user1 = User(name="guutasa", passwd='123456', email="hdusjm@163.com", image='about:blank')
-	
-	yield from user1.save()
 
-	pool.close()
+def test( loop ):
+    yield from orm.create_pool( loop = loop, user='root', password='123456', db='test' )
+    u=User(id = 1, name='guutasaTest1',email='guutasa1@test.com',passwd='guutasapasswd',image='about:blank')
+    yield from u.save()
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(test())
+if __name__ == '__main__':
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete( asyncio.wait([test( loop )]) )  
+    loop.close()
+    if loop.is_closed():
+        sys.exit(0)

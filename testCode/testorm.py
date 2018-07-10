@@ -1,21 +1,12 @@
-import asyncio
-import aiomysql
+import orm
+from models import User, Blog, Comment
 
-loop = asyncio.get_event_loop()
+def test():
+    yield from orm.create_pool(user='guutasa', password='123456', database='test')
 
-@asyncio.coroutine
-def go():
-    pool = yield from aiomysql.create_pool(host='127.0.0.1', port=3306,
-                                           user='guutasa', password='123456',
-                                           db='test', loop=loop)
+    u = User(name='Test', email='test@example.com', passwd='1234567890', image='about:blank')
 
-    with (yield from pool) as conn:
-        cur = yield from conn.cursor()
-        yield from cur.execute("SELECT 10")
-        # print(cur.description)
-        (r,) = yield from cur.fetchone()
-        assert r == 10
-    pool.close()
-    yield from pool.wait_closed()
+    yield from u.save()
 
-loop.run_until_complete(go())
+for x in test():
+    pass
