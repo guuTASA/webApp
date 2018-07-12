@@ -21,25 +21,65 @@ def get(path):  # 一个三层嵌套的decorator
 
 
 def post(path):
-	def decotator(func):
-		@functools.wraps(func)
-		def wrapper(*args, **kw):
-			return func(*args, **kw)
-		wrapper.__method__ = "POST"
-		wrapper.__route__ = path
-		return wrapper
-	return decorator
+    def decotator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kw):
+            return func(*args, **kw)
+        wrapper.__method__ = "POST"
+        wrapper.__route__ = path
+        return wrapper
+    return decorator
 
-
+# ???这是啥???
 def get_required_kw_args():
+    args = []
+    params = inspect.signature(fn).parameters
+    for name, param in param.items():
+        if param.kind == inspect.Parameter.kEYWORD_ONLY and param default == inspect.Parameter.empty:
+            args.append(name)
+    return tuple(args)
 
+
+# ???这是啥???
 def get_named_kw_args():
+    args = []
+    params = inspect.signature(fn).parameters
+    for name, param in params.items():
+        if param.kind == inspect.Parameter.KEYWORD_ONLY:
+            args.append(name)
+    return tuple(args)
 
+
+# ???这是啥???
 def has_named_kw_agrs():
+    params = inspect.signature(fn).parameters
+    for name, param in params.items():
+        if param.kind == inspect.Parameter.KEYWORD_ONLY:
+            return True
 
+
+# ???这是啥???
 def has_var_kw_arg():
+    params = inspect.signature(fn).parameters
+    for name, param in params.items():
+        if param.kind == inspect.Parameter.VAR_KEYWORD:
+            return True
 
+
+# ???这是啥???
 def has_request_arg():
+    sig = inspect.signature(fn)
+    params = sig.parameters
+    found = False
+    for name, param in params.items():
+        if name == 'request':
+            found = True
+            continue
+        if found and (param.kind != inspect.Parameter.VAR_POSITIONAL and param.kind != inspect.Parameter.KEYWORD_ONLY and param.kind != inspect.Parameter.VAR_KEYWORD):
+            raise ValueError('request parameter must be the last named parameter in function: %s%s' % (fn.__name__, str(sig)))
+    return found
+
+
 
 
 
@@ -59,9 +99,9 @@ class RequestHandler(object):
 
 # ???这是啥???
 def add_static(app):
-	path = os.path.jpin(os.path.dirname(os.path.abspath(__file__)), 'static')
-	app.router.add_static('/static/', path)
-	logging.info('add static %s => %s' % ('/static/', path))
+    path = os.path.jpin(os.path.dirname(os.path.abspath(__file__)), 'static')
+    app.router.add_static('/static/', path)
+    logging.info('add static %s => %s' % ('/static/', path))
 
 
 # 用来注册一个URL处理函数
