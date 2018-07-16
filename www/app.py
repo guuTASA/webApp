@@ -8,8 +8,8 @@ logging.basicConfig(level=logging.INFO)
 
 from datetime import datetime
 from aiohttp import web
-from jinja2 import Enviorment, FileSystemLoader
-from coroweb import add_routes, add_static
+from jinja2 import Environment, FileSystemLoader
+from coroweb import add_routes, add_static, get
 
 
 def init_jinja2(app, **kw):
@@ -24,9 +24,9 @@ def init_jinja2(app, **kw):
 		)
 	path = kw.get('path', None)
 	if path is None:
-		path = os.path.jion(os.path.dirname(ps.path.abspath(__file__)), 'templates')
+		path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 	logging.info('set jinja2 tempalte path: %s ' % path)
-	env = Enviorment(loader=FileSystemLoader(path), **options)
+	env = Environment(loader=FileSystemLoader(path), **options)
 	filters = kw.get('filters', None)
 	if filters is not None:
 		for name, f in filters.items():
@@ -36,7 +36,7 @@ def init_jinja2(app, **kw):
 
 async def logger_factory(app, handler):
 	async def logger(request):
-		logging.info('Request: %s %s' % (request.methon, request.path))
+		logging.info('Request: %s %s' % (request.method, request.path))
 		# await asyncio.sleep(0.3)
 		return (await handler(request))
 	return logger
@@ -71,7 +71,7 @@ async def response_factory(app, handler):
 			resp = web.Response(body=r.encode('utf-8'))
 			return resp
 		if isinstance(r, dict):
-			temolate = r.get('__template__')
+			template = r.get('__template__')
 			if template is None:
 				resp = web.Response(body=json.dumps(r, ensure_ascii=False, default=lambda o: o.__dict__).encode(utf-8))
 				resp.content_type = 'application/json;charset=utf-8'
@@ -112,7 +112,7 @@ async def init(loop):
     app = web.Application(loop=loop, middlewares=[
     	logger_factory, response_factory
     	])
-    init_jinja2(app, filters-dict(datetime=datetime_filter))
+    init_jinja2(app, filters=dict(datetime=datetime_filter))
     add_routes(app, 'handlers')
     add_static(app)
     srv = await loop.create_server(app.make_handler(), '127.0.0.1', 9000)

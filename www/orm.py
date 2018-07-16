@@ -21,11 +21,10 @@ def create_args_string(num):
 
 
 # 创建连接池
-@asyncio.coroutine
-def create_pool(loop, **kw):  # 此处的**kw是一个dict
+async def create_pool(loop, **kw):  # 此处的**kw是一个dict
     logging.info('start creating database connection pool...')
     global __pool
-    __pool = yield from aiomysql.create_pool(
+    __pool = await aiomysql.create_pool(
         host=kw.get('host', 'localhost'),
         port=kw.get('port', 3306),
         user=kw['user'],
@@ -40,44 +39,44 @@ def create_pool(loop, **kw):  # 此处的**kw是一个dict
     # 此处dict的get(key，默认值)方法，如果对应的key有value，则返回value, 否则返回默认值
 
 
-@asyncio.coroutine
-def destroy_pool():  # 关闭进程池
+
+async def destroy_pool():  # 关闭进程池
     global __pool
     if __pool is not None:
         __pool.close()  # close()不是一个协程
-        yield from __pool.wait_closed()  # wait_close()是一个协程，所以用yield from
+        await __pool.wait_closed()  # wait_close()是一个协程，所以用await
 
 
 # Select
-@asyncio.coroutine
-def select(sql, args, size=None):
+
+async def select(sql, args, size=None):
     log(sql, args)
     global __pool
-    with(yield from __pool)as conn:
-        cur = yield from conn.cursor(aiomysql.DictCursor)  # 打开dict的游标cursor
+    with(await __pool)as conn:
+        cur = await conn.cursor(aiomysql.DictCursor)  # 打开dict的游标cursor
         # 这是啥??? 为什么有or()
-        yield from cur.execute(sql.replace('?', '%s'), args or ())
+        await cur.execute(sql.replace('?', '%s'), args or ())
         if size:
-            rs = yield from cur.fetchmany(size)
+            rs = await cur.fetchmany(size)
         else:
-            rs = yield from cur.fetchall()
-        yield from cur.close()  # 关闭游标
+            rs = await cur.fetchall()
+        await cur.close()  # 关闭游标
         logging.info('rows returned:%s' % len(rs))
         return rs  # 返回查询结果，元素是tuple的list
 
 
 # Insert, Update, Delete
-@asyncio.coroutine
-def execute(sql, args, autocommit=True):  
+
+async def execute(sql, args, autocommit=True):  
     log(sql)
     global __pool
-    with(yield from __pool) as conn:
+    with(await __pool) as conn:
         try:
-            cur = yield from conn.cursor()
-            yield from cur.execute(sql.replace('?', '%s'), args)
-            yield from conn.commit()  # 此处手动提交???
+            cur = await conn.cursor()
+            await cur.execute(sql.replace('?', '%s'), args)
+            await conn.commit()  # 此处手动提交???
             affected = cur.rowcount
-            yield from cur.close()
+            await cur.close()
             print('execute : ', affected)  # 可以没有这行
         except BaseException as e:
             raise
@@ -210,17 +209,17 @@ class Model(dict, metaclass=ModelMetaClass):
         return value
 
     @classmethod
-    @asyncio.coroutine
-    def find(cls, pk):
+    
+    async def find(cls, pk):
         # 'find objects by primarykey.'
-        rs = yield from select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
+        rs = await select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
         if len(rs) == 0:
             return None
         return cls(**rs[0])  # 返回一条dict形式的记录
 
     @classmethod
-    @asyncio.coroutine
-    def find_all(cls, where=None, args=None, **kw):
+    
+    async def find_all(cls, where=None, args=None, **kw):
         sql = [cls.__select__]
         if where:
             sql.append('where')
@@ -245,15 +244,15 @@ class Model(dict, metaclass=ModelMetaClass):
             else:
                 raise ValueError('Invalid limit value')
 
-        rs = yield from select(' '.join(sql), args)
+        rs = await select(' '.join(sql), args)
         return [cls(**r) for r in rs]
 
     @classmethod
-    @asyncio.coroutine
-    def findAll(cls, **kw):
+    
+    async def findAll(cls, **kw):
         rs = []
         if len(kw) == 0:
-            rs = yield from select(cls.__select__, None)
+            rs = await select(cls.__select__, None)
         else:
             args = []
             values = []
@@ -261,45 +260,44 @@ class Model(dict, metaclass=ModelMetaClass):
                 args.append('%s=?' % k)
                 values.append(v)
             print('%s where %s' % (cls.__select__, ' and '.join(args)), values)
-            rs = yield from select('%s where %s ' % (cls.__select__, ' and '.join(args)), values)
+            rs = await select('%s where %s ' % (cls.__select__, ' and '.join(args)), values)
         return rs
 
     @classmethod
-    @asyncio.coroutine
-    def findNumber(cls, selectField, where=None, args=None):
+    async def findNumber(cls, selectField, where=None, args=None):
         sql = ['select %s __num__ from `%s` ' % (selectField, cls.__table__)]
         if where:
             sql.append('where')
             sql.append(where)
-        rs = yield from select(' '.join(sql), args, 1)
+        rs = await select(' '.join(sql), args, 1)
         if len(rs) == 0:
             return None
         return rs[0]['__num__']
 
-    @asyncio.coroutine
-    def save(self):
+    
+    async def save(self):
         args = list(map(self.getValueOrDefault, self.__fields__))
         print('save: %s ' % args)
         args.append(self.getValueOrDefault(self.__primary_key__))
-        rows = yield from execute(self.__insert__, args)
+        rows = await execute(self.__insert__, args)
         if rows != 1:
             print(self.__insert__)
             logging.warning(
                 'failed to insert record: affected rows: %s ' % rows)
 
-    @asyncio.coroutine
-    def update(self):
+    
+    async def update(self):
         args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
-        rows = yield from execute(self.__update__, args)
+        rows = await execute(self.__update__, args)
         if rows != 1:
             logging.warning(
                 'failed to update record: affected rows: %s ' % rows)
 
-    @asyncio.coroutine
-    def delete(self):
+    
+    async def delete(self):
         args = [self.getValue(self.__primary_key__)]
-        rows = yield from execute(self.__delete__, args)
+        rows = await execute(self.__delete__, args)
         if rows != 1:
             logging.warning(
                 'failed ro delete by primary key : affected rows : %s ' % rows)
@@ -321,21 +319,21 @@ class Model(dict, metaclass=ModelMetaClass):
     # # 创建实例
     # @asyncio.coroutine
     # def test():
-    #     yield from create_pool(loop=loop, host='localhost', port=3306, user='guutasa', password='123456', db='test')
+    #     await create_pool(loop=loop, host='localhost', port=3306, user='guutasa', password='123456', db='test')
     #     print('222')
     #     user = User2(id=2, name='Tom3',
     #                  email='3slysly759@gmail.com', password='312345')
-    #     # yield from user.save()
-    #     # yield from user.update()
-    #     # yield from user.delete()
+    #     # await user.save()
+    #     # await user.update()
+    #     # await user.delete()
     #     # print('success')
-    #     # r = yield from User2.findAll()
-    #     # r = yield from User2.find(2)
-    #     # r = yield from User2.findNumber(2)
-    #     # r = yield from User2.find_all('3')
+    #     # r = await User2.findAll()
+    #     # r = await User2.find(2)
+    #     # r = await User2.findNumber(2)
+    #     # r = await User2.find_all('3')
     #     print(r)
 
-    #     yield from destroy_pool()  # 关闭pool
+    #     await destroy_pool()  # 关闭pool
 
     # loop.run_until_complete(test())
     # loop.close()
