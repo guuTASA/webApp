@@ -219,7 +219,7 @@ class Model(dict, metaclass=ModelMetaClass):
 
     @classmethod
     
-    async def find_all(cls, where=None, args=None, **kw):
+    async def findAll(cls, where=None, args=None, **kw):
         sql = [cls.__select__]
         if where:
             sql.append('where')
@@ -247,21 +247,20 @@ class Model(dict, metaclass=ModelMetaClass):
         rs = await select(' '.join(sql), args)
         return [cls(**r) for r in rs]
 
-    @classmethod
-    
-    async def findAll(cls, **kw):
-        rs = []
-        if len(kw) == 0:
-            rs = await select(cls.__select__, None)
-        else:
-            args = []
-            values = []
-            for k, v in kw.items():
-                args.append('%s=?' % k)
-                values.append(v)
-            print('%s where %s' % (cls.__select__, ' and '.join(args)), values)
-            rs = await select('%s where %s ' % (cls.__select__, ' and '.join(args)), values)
-        return rs
+    # @classmethod
+    # async def findAll(cls, **kw):
+    #     rs = []
+    #     if len(kw) == 0:
+    #         rs = await select(cls.__select__, None)
+    #     else:
+    #         args = []
+    #         values = []
+    #         for k, v in kw.items():
+    #             args.append('%s=?' % k)
+    #             values.append(v)
+    #         print('%s where %s' % (cls.__select__, ' and '.join(args)), values)
+    #         rs = await select('%s where %s ' % (cls.__select__, ' and '.join(args)), values)
+    #     return rs
 
     @classmethod
     async def findNumber(cls, selectField, where=None, args=None):

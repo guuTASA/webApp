@@ -10,15 +10,16 @@ from models import User, Comment, Blog, next_id
 
 
 
-# TEST 1
 
-# @get('/')
-# async def index(request):
-# 	users = await User.findAll()
-# 	return{
-# 		'__template__':'test.html',
-# 		'users':users
-# 	}
+# TEST 3
+
+@get('/api/users')
+async def api_get_users(*, page="1"):
+	users = await User.findAll(orderBy='created_at desc')
+	for u in users:
+		u.passwd = '******'
+	return dict(users=users)
+
 
 # TEST 2
 @get('/')
@@ -33,4 +34,19 @@ async def index(request):
 		'__template__':'blogs.html',
 		'blogs':blogs
 	}
+
+
+
+# TEST 1
+
+# @get('/')
+# async def index(request):
+# 	users = await User.findAll()
+# 	return{
+# 		'__template__':'test.html',
+# 		'users':users
+# 	}
+
+
+
 
