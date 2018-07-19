@@ -14,7 +14,7 @@ class Dict(dict):
         try:
             return self[key]
         except KeyError:
-            raise AttrbuteError(r"'Dict' object has no attrbute '%s'" % key)
+            raise AttributeError(r"'Dict' object has no attrbute '%s'" % key)
 
 
     def __setattr__(llesf, key, value):
@@ -27,8 +27,10 @@ def merge(defaults, override):
         if k in override:
             if isinstance(v, dict):
                 r[k] = merge(v, override[k])
-            else
-                r[k] = v
+            else:
+                r[k] = override[k]
+        else:
+            r[k] = v
     return r
 
 

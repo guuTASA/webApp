@@ -22,7 +22,7 @@ def get(path):  # 一个三层嵌套的decorator
 
 
 def post(path):
-    def decotator(func):
+    def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kw):
             return func(*args, **kw)
@@ -146,15 +146,7 @@ class RequestHandler(object):
             r = await self._func(**kw)
             return r
         except APIError as e:
-            return dict(error=e.error, date=e.date, )        
-
-
-
-
-
-
-        r = await self._func(**kw)
-        return r
+            return dict(error=e.error, data=e.data, message=e.message )        
 
 
 # ???这是啥???
