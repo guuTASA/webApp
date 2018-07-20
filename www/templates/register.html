@@ -23,8 +23,9 @@ $(function(){
 		},
 		methods:{
 			submit: function (event){
-				event.prevnentDefault();
-				var $form = $('vm');
+				event.preventDefault();
+				//console.log('1111111111');
+				var $form = $('#vm');
 				if(! this.name.trim()){
 					return $form.showFormError('请输入名字');
 				}
@@ -84,14 +85,14 @@ $(function(){
 			<div class="uk-form-row">
 				<label class="uk-form-label">密码：</label>
 				<div class="uk-form-controls">
-					<input v-model="password1" type="text" maxlength="50" placeholder="密码" class="uk-width-1-1">
+					<input v-model="password1" type="password" maxlength="50" placeholder="密码" class="uk-width-1-1">
 				</div>
 			</div>
 
 			<div class="uk-form-row">
 				<label class="uk-form-label">确认密码：</label>
 				<div class="uk-form-controls">
-					<input v-model="password2" type="text" maxlength="50" placeholder="确认密码" class="uk-width-1-1">
+					<input v-model="password2" type="password" maxlength="50" placeholder="确认密码" class="uk-width-1-1">
 				</div>
 			</div>
 

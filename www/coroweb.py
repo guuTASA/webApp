@@ -142,6 +142,7 @@ class RequestHandler(object):
                 if not name in kw:
                     return web.HTTPBadRequest('Missing argument :%s' % name)
         logging.info('Call with args : %s' % str(kw))
+        logging.info('here====coroweb======')
         try:
             r = await self._func(**kw)
             return r
