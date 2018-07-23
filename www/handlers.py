@@ -5,6 +5,7 @@ import logging
 import hashlib
 import base64
 import asyncio
+import markdown2
 
 from coroweb import get, post
 from models import User, Comment, Blog, next_id
@@ -13,6 +14,28 @@ from config import configs
 from aiohttp import web
 
 
+
+def check_admin(request):
+	logging.info('Check admin here')
+	if request.__user__ is None or not request.__user__.admin:
+		raise APIpermissionError()
+
+# 用在哪里了?
+def get_page_index(page_str):
+	p = 1
+	try:
+		p = int (page_str)
+	except ValueError as e:
+		pass
+	if p < 1:
+		p = 1
+	return p
+
+
+def text2html(text):
+	lines = map(lambda s:'<p>%s<p>' % s.replace('&','&amp;').replace('<', '&lt;').replace('>', '&gt;'), filter(lambda s: s.strip() != '', text.split('\n')))
+	# 上边这一行是什么东西 ???
+	return ''.join(lines)
 
 
 COOKIE_NAME = 'awesession'
@@ -81,22 +104,41 @@ async def api_register_user(*, email, name, passwd):
 	return r
 
 
-
-
 @post('/api/blogs')
 async def api_create_blog(request, *, name, summary, content):
 	check_admin(request)
+	logging.info('admin checked here (handlers)')
 	if not name or not name.strip():
 		raise APIValueError('name', 'name cannot be empty')
 	if not summary or not summary.strip():
 		raise APIValueError('summary', 'summary connot be empty')
 	if not content or not content.strip():
 		raise APIValueError('content', 'content cannot be empty')
-	blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=conteng.strip())
+	blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=content.strip())
 	await blog.save()
+	logging.info('blog saved here (handlers)')
 	return blog
 
 
+@get('/api/blogs/{id}')
+async def api_get_blog(*, id):
+	blog = await Blog.find(id)
+	return blog
+
+
+@get('/blog/{id}')
+async def get_blog(id):
+	blog = await Blog.find(id)
+	logging.info('===============logging blog.content here============== %s' % blog.content)
+	comments = await Comment.findAll('blog_id=?', [id], orderBy='created_at desc')
+	for c in comments:
+		c.html_content = text2html(c.content)
+	blog.html_content = markdown2.markdown(blog.content)
+	return{
+		'__template__':'blog.html',
+		'blog':blog,
+		'comments':comments
+	}
 
 
 @get('/register')
@@ -113,6 +155,17 @@ def signin():
 	}
 
 
+@get('/manage/blogs/create')
+def manage_create_blog():
+	logging.info('manage_create_blog here')
+	return{
+		'__template__':'manage_blog_edit.html',
+		'id':'',
+		'action':'/api/blogs'
+	}
+
+
+
 @get('/signout')
 def signout(request):
 	referer = request.headers.get('Referer')
@@ -121,9 +174,6 @@ def signout(request):
 	logging.info('user signed out')
 	return r
 
-
-# @get('/api/blogs')
-# def 
 
 @post('/api/authenticate') # authenticate 认证
 async def authenticate(*, email, passwd):

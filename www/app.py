@@ -99,7 +99,7 @@ async def response_factory(app, handler):
 async def auth_factory(app, handler):
 	async def auth(request):
 		logging.info('check user: %s %s ' % (request.method, request.path))
-		logging.info('========================== auth_factory ========================')
+		# logging.info('========================== auth_factory ========================')
 		request.__user__ = None
 		cookie_str = request.cookies.get(COOKIE_NAME)
 		if cookie_str:
@@ -108,6 +108,7 @@ async def auth_factory(app, handler):
 				logging.info('set current user: %s ' % user.email)
 				request.__user__ = user
 		if request.path.startswith('/manage/') and (request.__user__ is None or not request.__user__.admin):
+			logging.info('=====================please use admin to signin!============================')
 			return web.HTTPFound('/signin')
 		return(await handler(request))
 	return auth
