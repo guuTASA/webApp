@@ -1,0 +1,39 @@
+{% extends '__base__.html %}
+
+{% block title %} - 日志 - {% endblock %}
+
+{% block beforehead %}
+
+<script type="text/javascript">
+	
+	function initVM(data) {
+		var vm = new Vue({
+			el:'#vm',
+			data: {
+				blogs: data.blogs,
+				page: data.page
+			},
+			methods: {
+				edit_blog: function(blog) {
+					location.assign('/manage/blogs/edit?id=' + blog.id);
+				},
+				delete_blog: function(blog){
+					if(confirm('delete "' + blog.name '"?')){
+						postJSON('/api/blogs/' + blog.id + '/delete', function(err, r) {
+							if (err) {
+								return alert(err.message || err.errror || err);
+							}
+							refresh();
+						});
+
+					}
+				}
+			} //methods
+		});
+		$('#vm').show();
+	}
+
+
+</script>
+
+{% endblock %}

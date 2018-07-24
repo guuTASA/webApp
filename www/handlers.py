@@ -20,7 +20,8 @@ def check_admin(request):
 	if request.__user__ is None or not request.__user__.admin:
 		raise APIpermissionError()
 
-# 用在哪里了?
+
+# 用在哪里了? 用在api_blogs里，传页数，转换成数字
 def get_page_index(page_str):
 	p = 1
 	try:
@@ -126,6 +127,18 @@ async def api_get_blog(*, id):
 	return blog
 
 
+@get('/api/blogs')
+async def api_blogs(*, page='1'):
+	page_index = get_page_index(page)
+	num = await Blog.findNumber('count(id)')
+	p = Page(num, page_index)
+	# 这里为什么要传总数进去呢?
+	if num == 0:
+		return dict(page=p, blogs=())
+	blogs = await Blog.findAll(orderBy='created_at', limit=(p.offset, p.limit))
+	return dict(page=p, blogs=blogs) 
+
+
 @get('/blog/{id}')
 async def get_blog(id):
 	blog = await Blog.find(id)
@@ -155,6 +168,13 @@ def signin():
 	}
 
 
+
+
+
+# 以下带 /manage/ 的页面，都是要检查用户权限的，只有admin = 1 的可以进
+# 如果 admin != 1 会跳转到登录界面，同时日志有提示（此处应在界面上提示）
+
+# 创建博客页面
 @get('/manage/blogs/create')
 def manage_create_blog():
 	logging.info('manage_create_blog here')
@@ -164,6 +184,13 @@ def manage_create_blog():
 		'action':'/api/blogs'
 	}
 
+# 博客管理页面
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+	return{
+		'__template__':'manage_blogs.html',
+		'page_index':get_page_index(page)
+	}
 
 
 @get('/signout')
