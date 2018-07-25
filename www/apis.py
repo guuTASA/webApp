@@ -38,7 +38,7 @@ class Page(object):
 		self.page_size = page_size
 		self.page_count = item_count // page_size + (1 if item_count % page_size > 0 else 0)
 		# 注意此处python除法
-		if (item_count=0) or (page_index > self.page_count):
+		if (item_count==0) or (page_index > self.page_count):
 			self.offset = 0
 			self.limit = 0
 			self.page_index = 1
