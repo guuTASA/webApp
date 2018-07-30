@@ -9,7 +9,7 @@ import markdown2
 
 from coroweb import get, post
 from models import User, Comment, Blog, next_id
-from apis import APIValueError, APIResourceNotFoundError
+from apis import APIValueError, APIResourceNotFoundError, Page
 from config import configs
 from aiohttp import web
 
