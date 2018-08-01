@@ -274,9 +274,10 @@ async def api_get_users(*, page='1'):
 	p = Page(num, page_index)
 	if num == 0:
 		return dict(page=p, users=())
-	users = await Comment.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+	users = await User.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
 	for u in users:
 		u.passwd = '******'
+	logging.info("find users")
 	return dict(page=p, users=users)
 
 
