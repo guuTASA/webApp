@@ -17,10 +17,11 @@ $(function() {
 		if(content===''){
 			return $form.showFormError('请输入评论内容');
 		}
-		$form.postJSON(comment_url, { content: content}, function(err,result){
+		$form.postJSON(comment_url, { content: content }, function(err,result){
 			if(err){
 				return $form.showFormError(err);
 			}
+			refresh();
 		});
 	});//submit
 });
@@ -53,7 +54,7 @@ $(function() {
 						<p class="uk-comment-meta">{{ comment.created_at|datetime }}</p>
 					</header>
 					<div class="uk-comment-body">
-						{{ comment.html_comment|safe }}
+						{{ comment.html_content|safe }}
 					</div>
 				</article>
 			</li>
